@@ -1,52 +1,81 @@
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
-import tensorflow as tf
-from tensorflow import keras
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
+from keras.models import Sequential, load_model
+from keras.layers import LSTM, Dense, Dropout
+import yfinance as yf
 
-# Generate some random data for demonstration purposes
-np.random.seed(42)
-data_size = 1000
-features = np.random.randn(data_size, 5)
-labels = 3 * features[:, 0] + 5 * features[:, 1] - 2 * features[:, 2] + 10 * np.random.randn(data_size)
+# Load data
+file_path = 'tesla_data_formatted.csv'
+df = pd.read_csv(file_path)
+df['Date'] = pd.to_datetime(df['Date'])  # Convert the 'Date' column to datetime format
 
-# Normalize the data
-scaler = MinMaxScaler()
-features_scaled = scaler.fit_transform(features)
+# Extract 'Open' prices and dates
+prices = df['Open'].values
+dates = df['Date'].values
 
-# Split the data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(features_scaled, labels, test_size=0.2, random_state=42)
+# Reshape 'Open' prices
+prices = prices.reshape(-1, 1)
 
-# Build the neural network model
-model = keras.Sequential([
-    keras.layers.Dense(64, activation='relu', input_shape=(features.shape[1],)),
-    keras.layers.Dense(32, activation='relu'),
-    keras.layers.Dense(1, activation='linear')  # Output layer with linear activation for regression
-])
+# Normalize data
+scaler = MinMaxScaler(feature_range=(0, 1))
+prices_scaled = scaler.fit_transform(prices)
 
-# Compile the model with Mean Squared Error loss for regression
-model.compile(optimizer='adam', loss='mean_squared_error')
+# Create dataset
+def create_dataset(df):
+    x = []
+    y = []
+    for i in range(50, df.shape[0]):
+        x.append(df[i - 50:i, 0])
+        y.append(df[i, 0])
+    x = np.array(x)
+    y = np.array(y)
+    return x, y
 
-# Train the model
-history = model.fit(X_train, y_train, epochs=50, batch_size=32, validation_data=(X_test, y_test))
+# Train-test split
+dataset_train = np.array(prices_scaled[:int(prices_scaled.shape[0] * 0.8)])
+dataset_test = np.array(prices_scaled[int(prices_scaled.shape[0] * 0.8):])
 
-# Evaluate the model on the test set
-mse = model.evaluate(X_test, y_test)
-print(f"Mean Squared Error on Test Set: {mse}")
+x_train, y_train = create_dataset(dataset_train)
+x_test, y_test = create_dataset(dataset_test)
 
-# Plot training history
-plt.plot(history.history['loss'], label='Training Loss')
-plt.plot(history.history['val_loss'], label='Validation Loss')
-plt.xlabel('Epochs')
-plt.ylabel('Loss')
+# Reshape input for LSTM
+x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
+x_test = np.reshape(x_test, (x_test.shape[0], x_test.shape[1], 1))
+
+# Build LSTM model
+model = Sequential()
+model.add(LSTM(units=96, return_sequences=True, input_shape=(x_train.shape[1], 1)))
+model.add(Dropout(0.2))
+model.add(LSTM(units=96, return_sequences=True))
+model.add(Dropout(0.2))
+model.add(LSTM(units=96, return_sequences=True))
+model.add(Dropout(0.2))
+model.add(LSTM(units=96))
+model.add(Dropout(0.2))
+model.add(Dense(units=1))
+model.compile(loss='mean_squared_error', optimizer='adam')
+model.fit(x_train, y_train, epochs=50, batch_size=32)
+model.save('stock_prediction.keras')
+
+# Load the trained model
+model = load_model('stock_prediction.keras')
+
+# Make predictions
+predictions = model.predict(x_test)
+predictions = scaler.inverse_transform(predictions)
+y_test_scaled = scaler.inverse_transform(y_test.reshape(-1, 1))
+
+# Plot the entire dataset
+fig, ax = plt.subplots(figsize=(16, 8))
+ax.set_facecolor('#000041')
+
+# Plot original prices
+ax.plot(dates, prices, color='gray', label='Original prices')
+
+# Plot predicted prices
+ax.plot(dates[-len(predictions):], predictions, color='cyan', label='Predicted prices')
+
 plt.legend()
 plt.show()
-
-# Predict the future prices
-future_data = np.random.randn(10, 5)  # Replace with actual future data
-future_data_scaled = scaler.transform(future_data)
-predicted_prices = model.predict(future_data_scaled)
-
-print("Predicted Future Prices:")
-print(predicted_prices.flatten())
