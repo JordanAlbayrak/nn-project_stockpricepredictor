@@ -7,9 +7,9 @@ from keras.layers import LSTM, Dense, Dropout
 import yfinance as yf
 
 # Load data
-file_path = 'tesla_data_formatted.csv'
+file_path = 'AAPL_daily_2017-01-01_2023-01-01.csv'
 df = pd.read_csv(file_path)
-df['Date'] = pd.to_datetime(df['Date'])  # Convert the 'Date' column to datetime format
+df['Date'] = pd.to_datetime(df['Date'], utc=True)
 
 # Extract 'Open' prices and dates
 prices = df['Open'].values
@@ -22,6 +22,7 @@ prices = prices.reshape(-1, 1)
 scaler = MinMaxScaler(feature_range=(0, 1))
 prices_scaled = scaler.fit_transform(prices)
 
+
 # Create dataset
 def create_dataset(df):
     x = []
@@ -33,12 +34,15 @@ def create_dataset(df):
     y = np.array(y)
     return x, y
 
+
 # Train-test split
 dataset_train = np.array(prices_scaled[:int(prices_scaled.shape[0] * 0.8)])
-dataset_test = np.array(prices_scaled[int(prices_scaled.shape[0] * 0.8):])
+dataset_test = np.array(prices_scaled[int(prices_scaled.shape[0] * 0.8):int(prices_scaled.shape[0] * 0.9)])
+dataset_validation = np.array(prices_scaled[int(prices_scaled.shape[0] * 0.9):])
 
 x_train, y_train = create_dataset(dataset_train)
 x_test, y_test = create_dataset(dataset_test)
+x_validation, y_validation = create_dataset(dataset_validation)
 
 # Reshape input for LSTM
 x_train = np.reshape(x_train, (x_train.shape[0], x_train.shape[1], 1))
@@ -56,26 +60,52 @@ model.add(LSTM(units=96))
 model.add(Dropout(0.2))
 model.add(Dense(units=1))
 model.compile(loss='mean_squared_error', optimizer='adam')
-model.fit(x_train, y_train, epochs=50, batch_size=32)
+model.fit(x_train, y_train, epochs=30, batch_size=32, validation_data=(x_validation, y_validation))
 model.save('stock_prediction.keras')
 
 # Load the trained model
 model = load_model('stock_prediction.keras')
 
-# Make predictions
-predictions = model.predict(x_test)
+# Generate predictions for the given dataset
+x_all, y_all = create_dataset(prices_scaled[int(prices_scaled.shape[0] * 0.8):int(prices_scaled.shape[0] * 0.9)])
+predictions = model.predict(np.reshape(x_all, (x_all.shape[0], x_all.shape[1], 1)))
 predictions = scaler.inverse_transform(predictions)
-y_test_scaled = scaler.inverse_transform(y_test.reshape(-1, 1))
 
-# Plot the entire dataset
+# Generate future predictions
+x_extended = x_test[-1]
+num_predictions = 30
+
+future_predictions = []
+for _ in range(num_predictions):
+    prediction = model.predict(x_extended.reshape(1, x_extended.shape[0], x_extended.shape[1]))
+    future_predictions.append(prediction[0, 0])
+    x_extended = np.roll(x_extended, -1)
+    x_extended[-1] = prediction[0, 0]
+
+future_predictions = np.array(future_predictions).reshape(-1, 1)
+future_predictions = scaler.inverse_transform(future_predictions)
+
+# Get the last date in the original data
+last_date = df['Date'].iloc[int(df.shape[0] * 0.8):int(df.shape[0] * 0.9)].iloc[:101].iloc[-1]
+
+# Generate future dates starting from the next business day
+future_dates = pd.date_range(start=last_date + pd.Timedelta(days=0), periods=num_predictions, freq='B')
+
+# Plot the entire dataset and future predictions
 fig, ax = plt.subplots(figsize=(16, 8))
 ax.set_facecolor('#000041')
 
-# Plot original prices
-ax.plot(dates, prices, color='gray', label='Original prices')
+# Convert indices to integers
+indices = df.index[int(df.shape[0] * 0.8):int(df.shape[0] * 0.9)].astype(int)
 
-# Plot predicted prices
-ax.plot(dates[-len(predictions):], predictions, color='cyan', label='Predicted prices')
+# Plot original prices
+ax.plot(df['Date'].iloc[indices].values[:101], df['Open'].iloc[indices].values[:101], color='gray', label='Original prices')
+
+# Plot predicted prices on the test data
+ax.plot(df['Date'].iloc[indices].values[:101], predictions, color='cyan', label='Predicted prices (Test Data)')
+
+# Plot future predictions
+ax.plot(future_dates, future_predictions, color='magenta', linestyle='dashed', label='Future predictions')
 
 plt.legend()
 plt.show()
