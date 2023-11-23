@@ -26,18 +26,19 @@ prices_scaled = scaler.fit_transform(prices[:, list(range(0,prices.shape[-1]))])
 print(prices_scaled)
 
 
-y_train = prices_scaled[1:int(prices_scaled.shape[0] * 0.8) + 1]
+y_train = prices_scaled[1:int(prices_scaled.shape[0] * 0.8) + 1,[0]]
 x_train = prices_scaled[:int(prices_scaled.shape[0] * 0.8)]
 
-y_test = prices_scaled[int(prices_scaled.shape[0] * 0.8) + 1:int(prices_scaled.shape[0] * 0.9) + 1]
+y_test = prices_scaled[int(prices_scaled.shape[0] * 0.8) + 1:int(prices_scaled.shape[0] * 0.9) + 1,[0]]
 x_test = prices_scaled[int(prices_scaled.shape[0] * 0.8):int(prices_scaled.shape[0] * 0.9)]
 
-y_validation = prices_scaled[int(prices_scaled.shape[0] * 0.90)+1:-1]
+y_validation = prices_scaled[int(prices_scaled.shape[0] * 0.90)+1:-1,[0]]
 x_validation = prices_scaled[int(prices_scaled.shape[0] * 0.90):-2]
 
 # Reshape input for LSTM
 x_train = np.reshape(x_train, (x_train.shape[0], prices.shape[-1], 1))
 x_test = np.reshape(x_test, (x_test.shape[0], prices.shape[-1], 1))
+
 
 # Build LSTM model
 model = Sequential()
@@ -60,7 +61,7 @@ model = load_model('stock_prediction.keras')
 # Generate predictions for the given dataset
 print("x",x_test.shape)
 print("y",y_test.shape)
-print("reshape", np.reshape(x_test, (x_test.shape[0], y_test.shape[-1], 1)).shape)
+print("reshape", np.reshape(x_test, (x_test.shape[0], 1)).shape)
 predictions = model.predict(np.reshape(x_test, (x_test.shape[0], y_test.shape[-1], 1)))
 print("prediction",predictions.shape)
 predictions = scaler.inverse_transform(predictions)
