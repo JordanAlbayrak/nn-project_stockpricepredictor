@@ -13,15 +13,16 @@ df['Date'] = pd.to_datetime(df['Date'], utc=True)
 df['Formatted_Date'] = df['Date'].dt.strftime('%Y-%d-%m')
 
 # Extract 'Open' prices and dates
-prices = df['Open'].values
+prices = df[['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']].values
 dates = df['Formatted_Date'].values
 
 # Reshape 'Open' prices
-prices = prices.reshape(-1, 1)
-
+print("test",prices.shape)
+prices = prices[:, list(range(0,prices.shape[1]))].reshape(-1, prices.shape[1])
+print('prices',prices.shape)
 # Normalize data
 scaler = MinMaxScaler(feature_range=(0, 1))
-prices_scaled = scaler.fit_transform(prices)
+prices_scaled = scaler.fit_transform(prices[:, [0]])
 
 
 y_train = prices_scaled[1:int(prices_scaled.shape[0] * 0.8) + 1]
@@ -50,7 +51,7 @@ model.add(LSTM(units=96))
 model.add(Dropout(0.2))
 model.add(Dense(units=1))
 model.compile(loss='mean_squared_error', optimizer='adam')
-model.fit(x_train, y_train, epochs=6, batch_size=32, validation_data=(x_validation, y_validation))
+model.fit(x_train, y_train, epochs=21, batch_size=32, validation_data=(x_validation, y_validation))
 model.save('stock_prediction.keras')
 
 # Load the trained model
@@ -65,6 +66,7 @@ num_predictions = 30
 
 future_predictions = []
 for _ in range(num_predictions):
+    print(x_extended)
     prediction = model.predict(x_extended.reshape(1, x_extended.shape[0], x_extended.shape[1]))
     future_predictions.append(prediction[0, 0])
     x_extended = np.roll(x_extended, -1)
