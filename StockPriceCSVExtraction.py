@@ -2,7 +2,7 @@ import yfinance as yf
 import pandas as pd
 
 # Define the ticker symbol
-ticker = "AAPL"
+ticker = "AMZN"
 
 # Define the time range
 start_date = pd.to_datetime("2017-01-01")

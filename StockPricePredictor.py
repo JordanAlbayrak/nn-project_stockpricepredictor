@@ -6,14 +6,14 @@ from keras.models import Sequential, load_model
 from keras.layers import LSTM, Dense, Dropout
 
 # Constants
-TRAIN_FILE_PATH = 'AAPL_daily_2017-01-01_2023-01-01.csv'
-TEST_FILE_PATH = 'AAPL_daily_2023-01-01_2023-10-01_TEST.csv'
+TRAIN_FILE_PATH = 'AMZN_daily_2017-01-01_2023-01-01.csv'
+TEST_FILE_PATH = 'AMZN_daily_2023-01-01_2023-08-01_TEST.csv'
 MODEL_FILE_PATH = 'stock_prediction.keras'
 WINDOW_SIZE = 50
 LSTM_UNITS = 96
 EPOCHS = 21
 BATCH_SIZE = 4
-NUM_PREDICTIONS = 50
+NUM_PREDICTIONS = 10
 
 
 # Function to load and preprocess data
@@ -97,5 +97,6 @@ ax.plot(dates_test, prices_test, color='gray', label='Original Prices')
 ax.plot(dates_test[len(dates_test) - predictions.shape[0]:], predictions, color='cyan', label='Predicted Prices')
 future_dates = pd.date_range(start=dates_test[-1], periods=NUM_PREDICTIONS, freq='B')
 ax.plot(future_dates, future_predictions, color='magenta', linestyle='dashed', label='Future Predictions')
+plt.title('AMZN Stock')
 plt.legend()
 plt.show()
