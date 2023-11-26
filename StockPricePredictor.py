@@ -6,8 +6,8 @@ from keras.models import Sequential, load_model
 from keras.layers import LSTM, Dense, Dropout
 
 # Constants
-TRAIN_FILE_PATH = 'META_daily_2017-01-01_2023-01-01.csv'
-TEST_FILE_PATH = 'META_daily_2023-01-01_2023-10-01_TEST.csv'
+TRAIN_FILE_PATH = 'AAPL_daily_2017-01-01_2023-01-01.csv'
+TEST_FILE_PATH = 'AAPL_daily_2023-01-01_2023-10-01_TEST.csv'
 MODEL_FILE_PATH = 'stock_prediction.keras'
 WINDOW_SIZE = 50
 LSTM_UNITS = 96
@@ -70,14 +70,14 @@ plt.legend(['Train'], loc='upper right')
 plt.show()
 
 # Load and preprocess test data
-dates_test, prices_test, prices_scaled_test, _ = load_and_preprocess_data(TEST_FILE_PATH)
+dates_test, prices_test, prices_scaled_test, test_scaler = load_and_preprocess_data(TEST_FILE_PATH)
 x_test, _ = create_lstm_dataset(prices_scaled_test)
 x_test = x_test.reshape(x_test.shape[0], x_test.shape[1], 1)
 
 # Load the model and make predictions
 model = load_model(MODEL_FILE_PATH)
 predictions = model.predict(x_test)
-predictions = scaler.inverse_transform(predictions)
+predictions = test_scaler.inverse_transform(predictions)
 
 # Future predictions
 x_extended = np.copy(x_test[-1])
@@ -88,13 +88,13 @@ for _ in range(NUM_PREDICTIONS):
     x_extended = np.roll(x_extended, -1)
     x_extended[-1] = prediction
 future_predictions = np.array(future_predictions).reshape(-1, 1)
-future_predictions = scaler.inverse_transform(future_predictions)
+future_predictions = test_scaler.inverse_transform(future_predictions)
 
 # Plot results
 fig, ax = plt.subplots(figsize=(16, 8))
 ax.set_facecolor('#000041')
 ax.plot(dates_test, prices_test, color='gray', label='Original Prices')
-ax.plot(dates_test[len(dates_test) - len(predictions):], predictions, color='cyan', label='Predicted Prices')
+ax.plot(dates_test[len(dates_test) - predictions.shape[0]:], predictions, color='cyan', label='Predicted Prices')
 future_dates = pd.date_range(start=dates_test[-1], periods=NUM_PREDICTIONS, freq='B')
 ax.plot(future_dates, future_predictions, color='magenta', linestyle='dashed', label='Future Predictions')
 plt.legend()
