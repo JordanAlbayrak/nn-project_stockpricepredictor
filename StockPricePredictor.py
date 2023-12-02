@@ -55,12 +55,12 @@ model.add(LSTM(units=96))
 model.add(Dropout(0.2))
 model.add(Dense(units=1))
 model.compile(loss='mean_squared_error', optimizer='adam')
-hist = model.fit(x_train, y_train, epochs=70, batch_size=32, verbose=2)
+hist = model.fit(x_train, y_train, epochs=21, batch_size=4, verbose=2)
 plt.plot(hist.history['loss'])
 plt.title('Training model loss')
 plt.ylabel('loss')
 plt.xlabel('epoch')
-plt.legend(['train'],loc='upper right')
+plt.legend(['train'], loc='upper right')
 plt.show()
 model.save('stock_prediction.keras')
 
@@ -91,7 +91,7 @@ predictions = scaler.inverse_transform(predictions)
 
 # Future Prediction
 x_extended = x_test[-1]
-num_predictions = 50
+num_predictions = 30
 
 future_predictions = []
 for _ in range(num_predictions):
@@ -117,7 +117,7 @@ ax.set_facecolor('#000041')
 ax.plot(dates, prices, color='gray', label='Original prices')
 
 # Plot predicted prices
-ax.plot(dates[len(dates)-predictions.shape[0]:], predictions, color='cyan', label='Predicted prices')
+ax.plot(dates[len(dates) - predictions.shape[0]:], predictions, color='cyan', label='Predicted prices')
 
 # Plot future predictions
 ax.plot(future_dates, future_predictions, color='magenta', linestyle='dashed', label='Future predictions')
